@@ -1,6 +1,8 @@
 *.Rproj
+.RData
 .Rhistory
 comments/
 figures/
 script/drafts/
 script/models/
+.RData
