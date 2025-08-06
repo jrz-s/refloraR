@@ -1,8 +1,21 @@
-*.Rproj
+# Arquivos e pastas gerados automaticamente pelo R e RStudio
 .RData
 .Rhistory
+.Rproj.user/
+*.Rproj
+
+# Diretórios de resultados temporários ou locais
 comments/
 figures/
 script/drafts/
 script/models/
-.RData
+
+# Outros arquivos que podem surgir e não precisam ir para o Git
+*.log
+*.aux
+*.out
+*.toc
+*.bak
+*.tmp
+.DS_Store  # (para usuários de MacOS)
+Thumbs.db  # (para usuários de Windows)
