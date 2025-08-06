@@ -1,0 +1,6 @@
+*.Rproj
+.Rhistory
+comments/
+figures/
+script/drafts/
+script/models/
