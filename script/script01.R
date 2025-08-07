@@ -10,6 +10,7 @@
 #' Função para obter informações via Webscraping 
 #' dados da página Reflora Brasil
 #' Importante: este script mostra o passo a passo.
+#' Este é um script exploratório.s
 
 # -------------------------------------------------------------------------
 # Load packages
@@ -24,8 +25,8 @@ pacman::p_load(tidyverse, here, rvest, glue, chromote)
 # -------------------------------------------------------------------------
 # Input definition
 
-genero <- "Cattleya"#"Myracrodruon"
-especie <- "elongata"#"urundeuva"
+genero <- "Adamantinia"
+especie <- "miltonioides"
 grupo <- "6"
 
 # -------------------------------------------------------------------------
@@ -84,25 +85,53 @@ html_renderizado <- read_html(node$outerHTML)
 # -------------------------------------------------------------------------
 # Extração do conteúdo desejado
 
+# função para extrair
+
+# 'get_reflora' Function  
+
+# load 'get_infoR' function
+get_infoR <- function(page, selector, text = TRUE) {
+  output <- page %>% rvest::html_elements(selector)
+  if (length(output) == 0) {
+    output <- NA_character_
+  } else {
+    if (text == TRUE) {
+      output <- output %>% rvest::html_text()
+    } else {
+      output <- output %>% rvest::html_attr("href")
+    }
+    
+    # Se retornar múltiplos valores, colapsa
+    if (length(output) > 1) {
+      output <- paste(output, collapse = "; ")
+    }
+  }
+  return(output)
+}
+
+# -------------------------------------------------------------------------
+# -------------------------------------------------------------------------
+
+# -------------------------------------------------------------------------
 # wfo link
 
-wfo_link <- html_renderizado %>%
-  html_elements("span + a") %>%
-  html_attr("href")
+wfo <- get_infoR(page = html_renderizado
+                  ,selector = "span + a"
+                  , text = F)
 
-print(wfo_link) # imprimir
+print(wfo) # imprimir
 
-utils::browseURL(wfo_link) #test link
+utils::browseURL(wfo) #test link
 
 # Cities link (species plus)
 
-cities_link <- html_renderizado %>%
-  html_elements("#linkCncFlora + a") %>%
-  html_attr("href")
+cities <- get_infoR(page = html_renderizado
+                   ,selector = "#linkCncFlora + a"
+                   , text = F)
 
-print(cities_link) # imprimir
+print(cities) # imprimir
 
-utils::browseURL(cities_link) #test link
+utils::browseURL(cities) #test link
 
 # CNCFlora link (não estou conseguindo por algum motivo)
 
@@ -116,115 +145,108 @@ utils::browseURL(cities_link) #test link
 
 # sinonimos relevantes
 
-sino_rel <- html_renderizado %>%
-  html_elements("#sinonimos-relevantes .content") %>%
-  html_text2()
+rel_synms <- get_infoR(page = html_renderizado
+                      ,selector = "#sinonimos-relevantes .content"
+                      , text = T)
 
-print(sino_rel) # imprimir
+print(rel_synms) # imprimir
 
 # forma de vida
 
-fvida <- html_renderizado %>%
-  html_elements(".forma-de-vida") %>%
-  html_text2() %>% 
-  stringr::str_remove("Forma de Vida\n")
+life_form <- get_infoR(page = html_renderizado
+                      ,selector = ".forma-de-vida"
+                      ,text = T) %>% 
+  stringr::str_remove("Forma de Vida ")
 
-print(fvida) # imprimir
+print(life_form) # imprimir
 
 # substrato
 
-ssubs <- html_renderizado %>%
-  html_elements(".substrato") %>%
-  html_text2() %>% 
-  stringr::str_remove("Substrato\n") # rupicola: vive em superfícies rochosas
+substrate <- get_infoR(page = html_renderizado
+                      ,selector = ".substrato"
+                      ,text = T) %>% 
+  stringr::str_remove("Substrato ")
 
-print(ssubs) # imprimir
+print(substrate) # imprimir
 
 # descrição controlada
 
-desc_controlled <- html_renderizado %>%
-  html_elements("div:nth-child(12) div") %>%
-  html_text2()
+ctrl_descrp <- get_infoR(page = html_renderizado
+                        ,selector = "div:nth-child(12) div"
+                        ,text = T)
 
-print(desc_controlled) # imprimir
+print(ctrl_descrp) # imprimir
 
 # descrição livre em português
 
-desc_free_pt <- html_renderizado %>%
-  html_elements("#descricao-livre-pt p") %>%
-  html_text2()
+free_descrp_pt <- get_infoR(page = html_renderizado
+                           ,selector = "#descricao-livre-pt p"
+                           ,text = T)
 
-print(desc_free_pt) # imprimir
+print(free_descrp_pt) # imprimir
 
 # descrição livre em inglês (é uma opção)
 
-desc_free_en <- html_renderizado %>%
-  html_elements("#descricao-livre-en p") %>%
-  html_text2()
+free_descrp_en <- get_infoR(page = html_renderizado
+                           ,selector = "#descricao-livre-en p"
+                           ,text = T)
 
-print(desc_free_en) # imprimir
+print(free_descrp_en) # imprimir
 
 # comentário público
 
-pub_comm <- html_renderizado %>%
-  html_elements("#comentario-publico-pt") %>%
-  html_text2()
+public_comm <- get_infoR(page = html_renderizado
+                        ,selector = "#comentario-publico-pt"
+                        ,text = T)
 
-print(pub_comm) # imprimir
+print(public_comm) # imprimir
 
 # origem
 
-origen <- html_renderizado %>%
-  html_elements("div:nth-child(20) div") %>%
-  html_text2()
+origin <- get_infoR(page = html_renderizado
+                   ,selector = "div:nth-child(20) div"
+                   ,text = T)
 
-print(origen) # imprimir
+print(origin) # imprimir
 
 # endemismo
 
-endm <- html_renderizado %>%
-  html_elements("div:nth-child(22) div") %>%
-  html_text2()
+endmsm <- get_infoR(page = html_renderizado
+                   ,selector = "div:nth-child(22) div"
+                   ,text = T)
 
-print(endm) # imprimir
+print(endmsm) # imprimir
 
-# # distribuicao (este daqui consegui pegar a distribuicao mesmo, mas faltam as outras)
-# 
-# distbn <- html_renderizado %>%
-#   html_elements("#distribuicao .content") %>%
-#   html_text2()
+# distribuicao (este daqui consegui pegar a distribuicao mesmo, mas faltam as outras)
 
-# Distribuicao (contempla: distribucao, dominios, tipo de vegetacao)
-# depois  trabalhar nisso
+distribution <- get_infoR(page = html_renderizado
+                         ,selector = ".text"
+                         ,text = T)
 
-distbn <- html_renderizado %>%
-  html_elements(".text") %>%
-  html_text2() 
-
-print(distbn) # imprimir
+print(distribution) # imprimir
 
 # Link to this taxon 
 
-link_taxon <- html_renderizado %>%
-  html_elements("div:nth-child(26) a") %>%
-  html_attr("href")
+taxon_link <- get_infoR(page = html_renderizado
+                       ,selector = "div:nth-child(26) a"
+                       ,text = F)
 
-print(link_taxon) # imprimir
+print(taxon_link) # imprimir
 
 # references
 
-references <- html_renderizado %>%
-  html_elements("div:nth-child(28) div") %>%
-  html_text2() 
+reference <- get_infoR(page = html_renderizado
+                      ,selector = "div:nth-child(28) div"
+                      ,text = T)
 
-print(references) # imprimir
+print(reference) # imprimir
 
 # citation
 
-citationp <- html_renderizado %>%
-  html_elements(".no-break-print .svelte-iqv7cw+ div") %>%
-  html_text2() %>% 
-  purrr::discard(~ .x == "") # podemos utilizar: ".[1]"
+citationp <- get_infoR(page = html_renderizado
+                     ,selector = ".no-break-print .svelte-iqv7cw+ div"
+                     ,text = T) %>% 
+  purrr::discard(~ .x == "  ")
 
 print(citationp) # imprimir
 
@@ -235,19 +257,19 @@ db_reflora <- tibble::tibble(
   sc_name = paste0(genero," ",especie)
   , genus = genero
   , species = especie
-  , cities = cities_link
-  , rel_synms = sino_rel
-  , life_form = fvida
-  , substrate = ssubs
-  , ctrl_descrp = desc_controlled
-  , free_descrp_pt = desc_free_pt
-  , free_descrp_en = ifelse(length(desc_free_en)==0,NA,"")
-  , public_comm = pub_comm
-  , origin = origen
-  , endmsm = endm
-  , distribution = distbn
-  , taxon_link = link_taxon
-  , reference = references
+  , cities = cities
+  , rel_synms = rel_synms
+  , life_form = life_form
+  , substrate = substrate
+  , ctrl_descrp = ctrl_descrp
+  , free_descrp_pt = free_descrp_pt
+  , free_descrp_en = free_descrp_en
+  , public_comm = public_comm
+  , origin = origin
+  , endmsm = endmsm
+  , distribution = distribution
+  , taxon_link = taxon_link
+  , reference = reference
   , citation = citationp) 
 
 # -------------------------------------------------------------------------
