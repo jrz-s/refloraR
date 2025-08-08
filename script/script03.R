@@ -65,20 +65,27 @@ mm <- db %>% dplyr::select(family
 # -------------------------------------------------------------------------
 # Get random species data by family
 
-sp_list <- list()
-
-for(i in 1:length(familyp)){
+{
   
-  db_i <- mm %>% 
-    dplyr::filter(family %in% familyp[i]) %>% 
-    dplyr::select(!family)
+  sp_list <- list()
   
-  sp_list[i] <- get_reflora_info(genus = db_i$genus
-                                 ,species = db_i$species
-                                 ) %>% list()
+  for(i in 1:length(familyp)){
+    
+    db_i <- mm %>% 
+      dplyr::filter(family %in% familyp[i]) %>% 
+      dplyr::select(!family)
+    
+    sp_list[i] <- get_reflora_info(genus = db_i$genus
+                                   ,species = db_i$species
+    ) %>% list()
+    
+  }
+  
+  names(sp_list) <- familyp
+  
+  save(sp_list,file = here::here('database','species_list.rda'))
+  
 }
-
-names(sp_list) <- familyp
 
 # -------------------------------------------------------------------------
 # -------------------------------------------------------------------------
@@ -86,12 +93,12 @@ names(sp_list) <- familyp
 
 # Getting data ("Orchidaceae")
 
-db_i <- mm %>% 
-  dplyr::filter(family %in% familyp[1]) %>% 
-  dplyr::select(!family)
-
-qq <- get_reflora_info(genus = db_i$genus
-                 ,species = db_i$species)
+# db_i <- mm %>% 
+#   dplyr::filter(family %in% familyp[1]) %>% 
+#   dplyr::select(!family)
+# 
+# qq <- get_reflora_info(genus = db_i$genus
+#                  ,species = db_i$species)
 
 # -------------------------------------------------------------------------
 # -------------------------------------------------------------------------
