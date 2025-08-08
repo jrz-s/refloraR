@@ -25,8 +25,8 @@ pacman::p_load(tidyverse, here, rvest, glue, chromote)
 # -------------------------------------------------------------------------
 # Input definition
 
-genero <- "Adamantinia"
-especie <- "miltonioides"
+genero <- "Habenaria"
+especie <- "gracilis"
 grupo <- "6"
 
 # -------------------------------------------------------------------------
