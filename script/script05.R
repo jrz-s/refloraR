@@ -173,32 +173,55 @@ save(db_caat_principal,file = here::here("database"
 # -------------------------------------------------------------------------
 # 2. Preparar o script para obter os dados via webscraping
 
-df <- db_caat_principal %>% 
-  dplyr::select("sci_name" = species,genus, "species" = specificEpithet)
+# load database
+load(file = here::here("database"
+                       ,"orquidea"
+                       ,"tidy_data"
+                       ,"db_caat_principal.rda"))
 
+# database manipulation
+df <- db_caat_principal %>% 
+  dplyr::select(genus, "species" = specificEpithet)
+
+# input genus
+genusp <- df$genus %>% unique
+
+# list created
+orquidea_list <- list()
+
+# Loop
 
 {
-
-# get data
-
-orquidea_data <- get_reflora_info(genus = df$genus
-                               ,species = df$species)
-
-# save data
-
-save(orquidea_data
-     ,file = here::here('database'
-                        ,'orquidea'
-                        ,'tidy_data'
-                        ,'orquidea_data.rda'))
-
-writexl::write_xlsx(x = orquidea_data
-                    ,path = here::here('database'
-                                       ,'orquidea'
-                                       ,'tidy_data'
-                                       ,'orquidea_data.xlsx'))
-
+  
+  for(i in 1:length(genusp)){
+    
+    # get data
+    
+    db_i <- df %>% 
+      dplyr::filter(genus %in% genusp[i])
+    
+    orquidea_list[i] <- get_reflora_info(genus = db_i$genus
+                                         ,species = db_i$species) %>% list()
+    
   }
+  
+  names(orquidea_list) <- genusp
+  
+  # save data
+  
+  save(orquidea_list
+       ,file = here::here('database'
+                          ,'orquidea'
+                          ,'tidy_data'
+                          ,'orquidea_data.rda'))
+  
+  writexl::write_xlsx(x = orquidea_list
+                      ,path = here::here('database'
+                                         ,'orquidea'
+                                         ,'tidy_data'
+                                         ,'orquidea_data.xlsx'))
+  
+}
 
 # -------------------------------------------------------------------------
 # -------------------------------------------------------------------------
