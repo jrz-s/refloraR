@@ -103,7 +103,6 @@ pdb %>%
                                    ,'Stelis montserratii'
                                    ,'Stelis sclerophylla'))
   
-  
   # identifcamos as especies unicas
   pp <- db_caat %>% dplyr::select(sci_name) %>% 
     dplyr::group_by(sci_name) %>% 
