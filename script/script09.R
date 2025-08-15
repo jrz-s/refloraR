@@ -71,11 +71,17 @@ familyp <- db %>%
   cat("Start Run", "\n")
   start.time <- Sys.time()
   
+  # database folder
+  if(!dir.exists(paths = here::here("database"
+                                    ,"reflora_database"))){
+    dir.create(path =  here::here("database"
+                                  ,"reflora_database"))
+  }
+  
+  # family loops
   for(i in 1:length(familyp)){
     
     start.time1 <- Sys.time()
-    
-    cat("Botanical family |", familyp[i], "\n")
     
     # database folder
     if(!dir.exists(paths = here::here("database"
@@ -85,6 +91,8 @@ familyp <- db %>%
                                     ,"reflora_database"
                                     ,familyp[i]))
     }
+    
+    cat("Botanical family |", familyp[i], "\n")
     
     # list created
     sp_list <- list()
@@ -122,6 +130,7 @@ familyp <- db %>%
     
     # save data
     save(sp_list,file = here::here('database'
+                                   ,"reflora_database"
                                    ,familyp[i]
                                    ,paste0("list_",familyp[i])
     ))
@@ -133,6 +142,7 @@ familyp <- db %>%
                            ,lubridate::as.duration(duration1 %>% round(2))) %>% 
                   unlist %>% as.vector
                 ,file = here::here("database"
+                                   ,"reflora_database"
                                    ,familyp[i]
                                    ,paste0(familyp[i],"_time",".txt")
                 ))
