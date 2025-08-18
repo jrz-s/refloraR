@@ -115,7 +115,7 @@ familyp <- db %>%
   end.time <- Sys.time()
   duration <- end.time - start.time
   write.table(x = paste0("Time difference of "
-                         ,lubridate::as.duration(duration %>% round(2))) %>% 
+                         ,lubridate::as.duration(duration %>% round(4))) %>% 
                 unlist %>% as.vector
               ,file = here::here("database"
                                  ,"reflora_database"

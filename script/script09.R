@@ -115,7 +115,7 @@ familyp <- db %>%
       db_j <- db_i %>% 
         dplyr::filter(genus %in% genusp[j])
       
-      sp_list[j] <- get_reflora_info(scientificName = db_j$scientificName[1:2]) %>% 
+      sp_list[j] <- get_reflora_info(scientificName = db_j$scientificName) %>% 
         dplyr::select(sc_name
                       ,wfo
                       ,cities
@@ -141,7 +141,7 @@ familyp <- db %>%
     end.time1 <- Sys.time()
     duration1 <- end.time1 - start.time1
     write.table(x = paste0("Time difference of "
-                           ,lubridate::as.duration(duration1 %>% round(2))) %>% 
+                           ,lubridate::as.duration(duration1 %>% round(4))) %>% 
                   unlist %>% as.vector
                 ,file = here::here("database"
                                    ,"reflora_database"
