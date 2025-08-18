@@ -31,7 +31,6 @@ source(file = here::here("function","get_refloraR_info.R"))
 pdb <- readRDS(file = here::here("database","393.417","CompleteBrazilianFlora.rds"))
 
 # database
-
 db <- pdb %>% 
   dplyr::select(id
                 ,family
@@ -46,7 +45,9 @@ db <- pdb %>%
   ) %>% 
   dplyr::select(!c(id,taxonomicStatus,group)) %>% 
   dplyr::distinct() %>% 
-  dplyr::arrange(substr(family, 1, 1))
+  dplyr::arrange(substr(family, 1, 1)) %>% 
+  dplyr::mutate(scientificName = paste0(genus," ",species)
+                ,scientificName = scientificName %>% stringr::str_squish())
 
 # -------------------------------------------------------------------------
 # Get random species data by family
@@ -89,8 +90,7 @@ familyp <- db %>%
       dplyr::select(!family)
     
     # fill list
-    sp_list[i] <- get_reflora_info(genus = db_i$genus
-                                   ,species = db_i$species) %>% 
+    sp_list[i] <- get_reflora_info(scientificName = db_i$scientificName) %>% 
       dplyr::select(sc_name
                     ,wfo
                     ,cities
@@ -129,4 +129,3 @@ familyp <- db %>%
 # -------------------------------------------------------------------------
 # -------------------------------------------------------------------------
 # -------------------------------------------------------------------------
-

@@ -25,7 +25,7 @@ pacman::p_load(tidyverse, here, rvest, glue, chromote)
 # -------------------------------------------------------------------------
 # 'get_reflora' Function  
 
-get_reflora <- function(genus, species, group = 6){
+get_reflora <- function(scientificName, group = 6){
   
   # load 'get_infoR' function
   get_infoR <- function(page, selector, text = TRUE) {
@@ -47,7 +47,24 @@ get_reflora <- function(genus, species, group = 6){
     return(output)
   }
   
+  # group character definition
   group <- as.character(group)
+  
+  # get separate genus and species 
+  sc <- scientificName %>% stringr::str_squish()
+  sc <- stringr::str_split(sc, " ", simplify = TRUE) %>% as.vector()
+  
+  # Input manipulation (genus and species)
+  genus <- sc[1] %>% stringr::str_trim()
+  genus <- paste0(genus %>% 
+                    base::tolower() %>% 
+                    stringr::str_sub(start = 1,end = 1) %>% 
+                    base::toupper()
+                  ,genus %>% 
+                    base::tolower() %>% 
+                    stringr::str_sub(start = 2,end = nchar(genus)))
+  
+  species <- sc[2] %>% stringr::str_trim() %>% base::tolower()
   
   # link structure
   link <- glue::glue(
@@ -91,18 +108,30 @@ get_reflora <- function(genus, species, group = 6){
   node <- b$DOM$getOuterHTML(nodeId = html$root$nodeId)
   html_renderizado <- read_html(node$outerHTML)
   
-  # Input manipulation
-  
-  genus <- paste0(genus %>% 
-                    base::tolower() %>% 
-                    stringr::str_sub(start = 1,end = 1) %>% 
-                    base::toupper()
-                  ,genus %>% 
-                    base::tolower() %>% 
-                    stringr::str_sub(start = 2,end = nchar(genus)))
-  
-  species <- species %>% 
-    base::tolower()
+  # Checar se aparece a mensagem "No records found."
+  body_text <- html_renderizado %>% rvest::html_text()
+  if (grepl("No records found", body_text)) {
+    return(tibble::tibble(
+      sc_name = NA_character_,
+      genus = genus,
+      species = species,
+      wfo = NA_character_,
+      cities = NA_character_,
+      rel_synms = NA_character_,
+      life_form = NA_character_,
+      substrate = NA_character_,
+      ctrl_descrp = NA_character_,
+      free_descrp_pt = NA_character_,
+      free_descrp_en = NA_character_,
+      public_comm = NA_character_,
+      origin = NA_character_,
+      endmsm = NA_character_,
+      distribution = NA_character_,
+      taxon_link = NA_character_,
+      reference = NA_character_,
+      citation = NA_character_
+    ))
+  }
   
   # Database constructions
   
@@ -184,13 +213,13 @@ get_reflora <- function(genus, species, group = 6){
 # -------------------------------------------------------------------------
 # 'get_reflora_info' Function  
 
-get_reflora_info <- function(genus, species){
+get_reflora_info <- function(scientificName){
   
   sp <- tibble::tibble(
-    genus = genus, species = species)
+    scientificName = scientificName)
   
   db <- sp %>%
-    purrr::pmap_dfr(~get_reflora(..1,..2))
+    purrr::pmap_dfr(~get_reflora(..1))
   
   return(db)
   

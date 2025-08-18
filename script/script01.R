@@ -25,8 +25,8 @@ pacman::p_load(tidyverse, here, rvest, glue, chromote)
 # -------------------------------------------------------------------------
 # Input definition
 
-genero <- "Habenaria"
-especie <- "gracilis"
+genero <- "Aphelandra"
+especie <- "hirta"
 grupo <- "6"
 
 # -------------------------------------------------------------------------

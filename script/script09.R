@@ -12,6 +12,7 @@
 #' É bom quantificar quantas gêneros temos, depois verificar quantas espécies por gênero 
 #' temos para poder fazer pouco a pouco a extração e ir armazenando-a 
 #' em pastas específicas, Ex.: Myrtaceas -> part1, part2, etc.
+
 # -------------------------------------------------------------------------
 # Load packages
 if(!require("pacman")){
@@ -47,7 +48,10 @@ db <- pdb %>%
                       ,!is.na(species)
   ) %>% 
   dplyr::select(!c(id,taxonomicStatus,group)) %>% 
-  dplyr::distinct()
+  dplyr::distinct() %>% 
+  dplyr::arrange(substr(family, 1, 1)) %>% 
+  dplyr::mutate(scientificName = paste0(genus," ",species)
+                ,scientificName = scientificName %>% stringr::str_squish())
 
 # -------------------------------------------------------------------------
 # Get random species data by family
@@ -111,8 +115,7 @@ familyp <- db %>%
       db_j <- db_i %>% 
         dplyr::filter(genus %in% genusp[j])
       
-      sp_list[j] <- get_reflora_info(genus = db_j$genus
-                                     ,species = db_j$species) %>% 
+      sp_list[j] <- get_reflora_info(scientificName = db_j$scientificName[1:2]) %>% 
         dplyr::select(sc_name
                       ,wfo
                       ,cities
@@ -132,8 +135,7 @@ familyp <- db %>%
     save(sp_list,file = here::here('database'
                                    ,"reflora_database"
                                    ,familyp[i]
-                                   ,paste0("list_",familyp[i])
-    ))
+                                   ,paste0("list_",familyp[i])))
     
     # save spent time - botanical family
     end.time1 <- Sys.time()
@@ -144,8 +146,7 @@ familyp <- db %>%
                 ,file = here::here("database"
                                    ,"reflora_database"
                                    ,familyp[i]
-                                   ,paste0(familyp[i],"_time",".txt")
-                ))
+                                   ,paste0(familyp[i],"_time",".txt")))
     
     cat("Run duration by botanical family:", "\n")
     print(duration1)
