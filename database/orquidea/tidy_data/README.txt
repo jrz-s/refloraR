@@ -11,3 +11,5 @@ Aqui serão colocadas as bases de dados organizadas das orquídeas.
 "db_completa_com_ID_synm.rda" é a base de dados completa, mas com todos os sinonimos e IDs por espécie  ("db_total.xlsx").
 
 "db_webscrp_id_synm.rda" é a base de dados obtida por webscraping cruzada com a base de dados original ("wdb.xlsx").
+
+"db_caat_habitat.xlsx" e "db_caat_habitat.rda" base de dados "db_caat.rda" mas com a variável habitat, é importante considerar que essa variável pode contem mais de uma habitate.
