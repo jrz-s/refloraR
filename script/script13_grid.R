@@ -23,7 +23,7 @@ library(readxl)
 library(ggplot2)
 
 # Ler shapefile da Caatinga
-caatinga <- st_read("shp/caatinga.shp")
+caatinga <- st_read("caatinga/caatinga.shp")
 caatinga <- st_transform(caatinga, crs = 4674)  # garantir CRS em graus
 
 # Criar grid de 0,5 grau
@@ -89,3 +89,27 @@ ggplot() +
   #geom_sf(data = ocorrencias_sf, color = "red", size = 1) +
   theme_minimal() +
   labs(fill = "Nº de espécies")
+
+
+# Criar matriz de presença/ausência ---------------------------------------
+
+# Organizando a coordenada da grid filtrada
+grid_coords <- grid_filtrada %>%
+  st_centroid() %>%
+  st_coordinates() %>%
+  as.data.frame() %>%
+  rename(x = X, y = Y) %>%
+  mutate(cell_id = grid_filtrada$cell_id)
+
+# Juntar coordenadas à matriz de presença/ausência
+matriz_pa <- matriz_pa %>%
+  left_join(grid_coords, by = "cell_id") %>%
+  relocate(x, y, .after = cell_id)  # coloca as coordenadas logo após o ID
+
+# Visualizar as primeiras linhas
+head(matriz_pa)
+
+install.packages("writexl")
+library(writexl)
+write_xlsx(matriz_pa, "database/matriz_presenca_ausencia.xlsx")
+
