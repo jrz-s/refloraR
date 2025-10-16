@@ -23,7 +23,7 @@ library(readxl)
 library(ggplot2)
 
 # Ler shapefile da Caatinga
-caatinga <- st_read("caatinga/caatinga.shp")
+caatinga <- st_read("shp/caatinga.shp")
 caatinga <- st_transform(caatinga, crs = 4674)  # garantir CRS em graus
 
 # Criar grid de 0,5 grau
@@ -81,8 +81,9 @@ ocorrencias_por_celula <- ocorrencias_com_grid %>%
 grid_filtrada <- grid_filtrada %>%
   left_join(ocorrencias_por_celula, by = "cell_id")
 
+
 # Visualizar resultado (mapa com riqueza de espécies)
-ggplot() +
+map_especies <- ggplot() +
   geom_sf(data = grid_filtrada, aes(fill = n_especies), color = "gray80") +
   scale_fill_viridis_c(option = "brightgreen2", na.value = "white") +
   geom_sf(data = caatinga, fill = NA, color = "black") +
@@ -90,6 +91,29 @@ ggplot() +
   theme_minimal() +
   labs(fill = "Nº de espécies")
 
+# Jutando FRic e plotando
+FD.index <- read.csv("FD.incices.csv")
+
+library(dplyr)
+
+grid_FRic <- grid_filtrada %>%
+  left_join(FD.index, by = c("cell_id" = "Cell"))
+
+map_FRic <- ggplot() +
+  geom_sf(data = grid_FRic, aes(fill = FRic), color = "gray80") +
+  scale_fill_viridis_c(option = "C", na.value = "white") +
+  geom_sf(data = caatinga, fill = NA, color = "black", size = 0.6) +
+  theme_minimal() +
+  labs(fill = "FRic") +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold"),
+    legend.position = "right"
+  )
+
+library(grid)
+library(gridExtra)
+
+grid.arrange(map_especies, map_FRic, ncol = 2)
 
 # Criar matriz de presença/ausência ---------------------------------------
 
@@ -100,6 +124,21 @@ grid_coords <- grid_filtrada %>%
   as.data.frame() %>%
   rename(x = X, y = Y) %>%
   mutate(cell_id = grid_filtrada$cell_id)
+
+# Selecionando as colunas necessárias e removendo duplicatas 
+presenca <- ocorrencias_com_grid %>%
+  st_drop_geometry() %>% 
+  select(cell_id, sci_name) %>%
+  distinct()
+
+# Criando uma matriz de presença e ausência
+matriz_pa <- presenca %>%
+  mutate(presenca = 1) %>%
+  tidyr::pivot_wider(
+    names_from = sci_name,
+    values_from = presenca,
+    values_fill = list(presenca = 0)
+  ) %>% arrange(cell_id) #ordenando por id da célula
 
 # Juntar coordenadas à matriz de presença/ausência
 matriz_pa <- matriz_pa %>%
@@ -113,3 +152,5 @@ install.packages("writexl")
 library(writexl)
 write_xlsx(matriz_pa, "database/matriz_presenca_ausencia.xlsx")
 
+
+plot(ocorrencias_por_celula$n_ocorrencias, ocorrencias_por_celula$n_especies)
