@@ -15,18 +15,23 @@
 
 # -------------------------------------------------------------------------
 # Pacotes necessários
-install.packages("sf")
-install.packages("dplyr")
-install.packages("readxl")
-install.packages("ggplot2")
+# install.packages("sf")
+# install.packages("dplyr")
+# install.packages("readxl")
+# install.packages("ggplot2")
 library(sf)
 library(dplyr)
 library(readxl)
 library(ggplot2)
+library(tidyverse)
+library(viridis)
+library(terra)
 
 # Ler shapefile da Caatinga
 caatinga <- st_read("shp/caatinga.shp")
+#caatinga <- st_read("shp/Municipios-Caatinga/Caatinga-Municipios.shp")
 caatinga <- st_transform(caatinga, crs = 4674)  # garantir CRS em graus
+plot(caatinga)
 
 # Criar grid de 0,5 grau
 grid <- st_make_grid(caatinga,
@@ -35,15 +40,19 @@ grid <- st_make_grid(caatinga,
   st_as_sf() %>%
   mutate(cell_id = row_number())   # criar ID único para cada célula
 
+plot(grid)
+
 # Calcular interseção sem cortar a célula
 # área total da célula
 grid <- grid %>% mutate(area_total = as.numeric(st_area(.)))
 
 # calcular a área de interseção com a Caatinga
-intersec <- st_intersection(grid, caatinga) %>%
-  mutate(area_intersec = as.numeric(st_area(.))) %>%
+intersec <- sf::st_intersection(grid, caatinga) %>%
+  dplyr::mutate(area_intersec = as.numeric(st_area(.))) %>%
   st_drop_geometry() %>%
-  select(cell_id, area_intersec)
+ dplyr::select(cell_id, area_intersec)
+
+plot(intersec)
 
 # juntar com a grid original
 grid <- left_join(grid, intersec, by = "cell_id") %>%
@@ -59,7 +68,12 @@ ggplot()+
 
 # Ler pontos de ocorrência (Excel)
 # A planilha precisa ter colunas "longitude" e "latitude"
-ocorrencias <- read_excel("database/db_caat_habitat_dummy.xlsx")
+# ocorrencias <- read_excel("database/db_caat_habitat_dummy.xlsx")
+
+ocorrencias <- readxl::read_excel(path = here::here("database"
+                                                    ,"orquidea"
+                                                    ,"tidy_data"
+                                                    ,"db_caat_habitat_dummy.xlsx"))
 
 # Transformar em objeto sf
 ocorrencias_sf <- st_as_sf(ocorrencias,
@@ -86,15 +100,27 @@ grid_filtrada <- grid_filtrada %>%
 
 # Visualizar resultado (mapa com riqueza de espécies)
 map_especies <- ggplot() +
+<<<<<<< HEAD
   geom_sf(data = grid_filtrada, aes(fill = n_especies), color = "gray80") +
   scale_fill_viridis_c(option = "plasma", na.value = "white") +
+=======
+  geom_sf(data = grid_filtrada
+          #, aes(fill = n_especies)
+          , color = "gray80") +
+  #scale_fill_viridis_c(option = "brightgreen2", na.value = "white") + 
+  scale_fill_viridis_c(option = "viridis", na.value = "white") +
+>>>>>>> 66709db68ff313e75a62484acdb0889df296e16a
   geom_sf(data = caatinga, fill = NA, color = "black") +
   #geom_sf(data = ocorrencias_sf, color = "red", size = 1) +
   theme_minimal() +
   labs(fill = "Nº de espécies")
 
 # Jutando FRic e plotando
-FD.index <- read.csv("FD.incices.csv")
+FD.index <- read.csv(file = here::here("database"
+                                       ,"orquidea"
+                                       ,"tidy_data"
+                                       ,"FD.incices.csv"))
+#FD.index <- read.csv("FD.incices.csv")
 
 library(dplyr)
 

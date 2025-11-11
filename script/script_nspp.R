@@ -13,10 +13,17 @@
 
 # -------------------------------------------------------------------------
 # Pacotes necessários
+<<<<<<< HEAD
 install.packages("sf")
 install.packages("dplyr")
 install.packages("readxl")
 install.packages("ggplot2")
+=======
+# install.packages("sf")
+# install.packages("dplyr")
+# install.packages("readxl")
+# install.packages("ggplot2")
+>>>>>>> 66709db68ff313e75a62484acdb0889df296e16a
 library(sf)
 library(dplyr)
 library(readxl)
@@ -38,10 +45,17 @@ grid <- st_make_grid(caatinga,
 grid <- grid %>% mutate(area_total = as.numeric(st_area(.)))
 
 # calcular a área de interseção com a Caatinga
+<<<<<<< HEAD
 intersec <- st_intersection(grid, caatinga) %>%
   mutate(area_intersec = as.numeric(st_area(.))) %>%
   st_drop_geometry() %>%
   select(cell_id, area_intersec)
+=======
+intersec <- sf::st_intersection(grid, caatinga) %>%
+  dplyr::mutate(area_intersec = as.numeric(st_area(.))) %>%
+  sf::st_drop_geometry() %>%
+  dplyr::select(cell_id, area_intersec)
+>>>>>>> 66709db68ff313e75a62484acdb0889df296e16a
 
 # juntar com a grid original
 grid <- left_join(grid, intersec, by = "cell_id") %>%
@@ -57,7 +71,15 @@ ggplot()+
 
 # Ler pontos de ocorrência (Excel)
 # A planilha precisa ter colunas "longitude" e "latitude"
+<<<<<<< HEAD
 ocorrencias <- read_excel("database/db_caat_habitat_dummy.xlsx")
+=======
+# ocorrencias <- read_excel("database/db_caat_habitat_dummy.xlsx")
+ocorrencias <- readxl::read_excel(path = here::here("database"
+                                                    ,"orquidea"
+                                                    ,"tidy_data"
+                                                    ,"db_caat_habitat_dummy.xlsx"))
+>>>>>>> 66709db68ff313e75a62484acdb0889df296e16a
 
 # Transformar em objeto sf
 ocorrencias_sf <- st_as_sf(ocorrencias,
@@ -84,9 +106,49 @@ grid_filtrada <- grid_filtrada %>%
 
 # Visualizar resultado (mapa com riqueza de espécies)
 map_especies <- ggplot() +
+<<<<<<< HEAD
   geom_sf(data = grid_filtrada, aes(fill = n_especies), color = "gray80") +
+=======
+  geom_sf(data = grid_filtrada, aes(fill = n_ocorrencias), color = "gray80") +
+>>>>>>> 66709db68ff313e75a62484acdb0889df296e16a
   scale_fill_viridis_c(option = "viridis", na.value = "white") +
   geom_sf(data = caatinga, fill = NA, color = "black") +
   #geom_sf(data = ocorrencias_sf, color = "red", size = 1) +
   theme_minimal() +
+<<<<<<< HEAD
   labs(fill = "Nº de espécies")
+=======
+  labs(fill = "Nº de ocorrencias")
+
+# -------------------------------------------------------------------------
+
+# transformar um grid (shapefile) em um raster
+
+# 1. Ler o shapefile (pode ser .shp, .gpkg, etc.)
+grid <- grid_filtrada
+
+# 2. Criar um raster base (define resolução e extensão)
+# Exemplo: resolução de 0.01 graus
+r_base <- terra::rast(grid, resolution = 0.5)
+
+# 3. Converter (rasterizar) com base em um atributo do shapefile
+# Suponha que o shapefile tenha uma coluna chamada "valor"
+r_ocorrencias <- rasterize(grid, r_base, field = "n_ocorrencias")
+
+# 4. Salvar o resultado
+# writeRaster(r_grid, "caminho/para/saida_grid_raster.tif", overwrite = TRUE)
+
+plot(r_ocorrencias)
+
+# export raster
+terra::writeRaster(
+  r_ocorrencias
+  ,filename = here::here(
+    "rasters"
+    ,"raster_ocorrencias.tiff")
+  ,overwrite = TRUE)
+
+# -------------------------------------------------------------------------
+# -------------------------------------------------------------------------
+# -------------------------------------------------------------------------
+>>>>>>> 66709db68ff313e75a62484acdb0889df296e16a
