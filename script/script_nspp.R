@@ -9,9 +9,7 @@
 # Description
 # Nesse script estou criando uma grid com o shapefile da Caatinga;
 # Adicionando os pontos de ocorrência das espécies;
-# Analisando a riqueza em cada grid;
-# Fazendo a matriz de presença e ausência;
-# Juntando com os dados FRic e plotando.
+# Analisando a riqueza em cada célula.
 
 # -------------------------------------------------------------------------
 # Pacotes necessários
@@ -87,72 +85,8 @@ grid_filtrada <- grid_filtrada %>%
 # Visualizar resultado (mapa com riqueza de espécies)
 map_especies <- ggplot() +
   geom_sf(data = grid_filtrada, aes(fill = n_especies), color = "gray80") +
-  scale_fill_viridis_c(option = "plasma", na.value = "white") +
+  scale_fill_viridis_c(option = "viridis", na.value = "white") +
   geom_sf(data = caatinga, fill = NA, color = "black") +
   #geom_sf(data = ocorrencias_sf, color = "red", size = 1) +
   theme_minimal() +
   labs(fill = "Nº de espécies")
-
-# Jutando FRic e plotando
-FD.index <- read.csv("FD.incices.csv")
-
-library(dplyr)
-
-grid_FRic <- grid_filtrada %>%
-  left_join(FD.index, by = c("cell_id" = "Cell"))
-
-map_FRic <- ggplot() +
-  geom_sf(data = grid_FRic, aes(fill = FRic), color = "gray80") +
-  scale_fill_viridis_c(option = "C", na.value = "white") +
-  geom_sf(data = caatinga, fill = NA, color = "black", size = 0.6) +
-  theme_minimal() +
-  labs(fill = "FRic") +
-  theme(
-    plot.title = element_text(hjust = 0.5, face = "bold"),
-    legend.position = "right"
-  )
-
-library(grid)
-library(gridExtra)
-
-grid.arrange(map_especies, map_FRic, ncol = 2)
-
-# Criar matriz de presença/ausência ---------------------------------------
-
-# Organizando a coordenada da grid filtrada
-grid_coords <- grid_filtrada %>%
-  st_centroid() %>%
-  st_coordinates() %>%
-  as.data.frame() %>%
-  rename(x = X, y = Y) %>%
-  mutate(cell_id = grid_filtrada$cell_id)
-
-# Selecionando as colunas necessárias e removendo duplicatas 
-presenca <- ocorrencias_com_grid %>%
-  st_drop_geometry() %>% 
-  select(cell_id, sci_name) %>%
-  distinct()
-
-# Criando uma matriz de presença e ausência
-matriz_pa <- presenca %>%
-  mutate(presenca = 1) %>%
-  tidyr::pivot_wider(
-    names_from = sci_name,
-    values_from = presenca,
-    values_fill = list(presenca = 0)
-  ) %>% arrange(cell_id) #ordenando por id da célula
-
-# Juntar coordenadas à matriz de presença/ausência
-matriz_pa <- matriz_pa %>%
-  left_join(grid_coords, by = "cell_id") %>%
-  relocate(x, y, .after = cell_id)  # coloca as coordenadas logo após o ID
-
-# Visualizar as primeiras linhas
-head(matriz_pa)
-
-install.packages("writexl")
-library(writexl)
-write_xlsx(matriz_pa, "database/matriz_presenca_ausencia.xlsx")
-
-
-plot(ocorrencias_por_celula$n_ocorrencias, ocorrencias_por_celula$n_especies)
