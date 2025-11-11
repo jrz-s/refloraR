@@ -17,12 +17,12 @@ plot(caatinga)
 
 caatinga2 <- caatinga %>% as.data.frame() %>% tibble::as_tibble() %>% 
   dplyr::inner_join(municipios) %>% 
-  dplyr::arrange(SIGLA_UF)
+  dplyr::arrange(SIGLA_UF) 
 
-leitos <- sf::st_as_sf(bb) %>% 
+leitos <- sf::st_as_sf(caatinga2) %>% 
   dplyr::select(LEITOS)
 
-hospedagem <- sf::st_as_sf(bb) %>% 
+hospedagem <- sf::st_as_sf(caatinga2) %>% 
   dplyr::select(HOSPEDAGEM)
 
 plot(leitos)

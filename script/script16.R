@@ -14,18 +14,43 @@
 # -------------------------------------------------------------------------
 # Load packages -----------------------------------------------------------
 
-pacman::p_load(here,tidyverse,MASS,ggtext)
+pacman::p_load(here,tidyverse,MASS,ggtext,terra)
 
 # -------------------------------------------------------------------------
 # Load database -----------------------------------------------------------
 
 r_especies <- terra::rast(x = here::here("rasters","raster_nespecies.tiff"))
+r_ocorrencias <- terra::rast(x = here::here("rasters","raster_ocorrencias.tiff"))
 r_hospedagem <- terra::rast(x = here::here("rasters","raster_hospedagem.tiff"))
 r_leitos <- terra::rast(x = here::here("rasters","raster_leitos.tiff"))
 
 plot(r_especies)
 plot(r_hospedagem)
 plot(r_leitos)
+
+# -------------------------------------------------------------------------
+## padronizar a extensao para melhor representacao
+r1 <- terra::rast(x = here::here("rasters","raster_nespecies.tiff"))
+r2 <- terra::rast(x = here::here("rasters","raster_hospedagem.tiff"))
+r3 <- terra::rast(x = here::here("rasters","raster_leitos.tiff"))
+
+ref <- r1  # referência
+r2_res <- terra::resample(r2, ref, method = "bilinear")  # ou "near" se for dados categóricos
+r3_res <- terra::resample(r3, ref, method = "bilinear")  # provavelmente já alinhado, mas garante
+
+r2_res <- terra::crop(r2_res, ext(ref))
+r3_res <- terra::crop(r3_res, ext(ref))
+
+stacked <- c(r1, r2_res, r3_res)
+names(stacked) <- c("n_especies", "hospedagem", "leitos")
+
+# plotar juntos
+plot(
+  stacked
+  ,nc = 3          
+  ,nr = 1          
+  ,mar = c(3, 3, 2, 5)
+  ,main = c("Número de espécies", "Hospedagem", "Leitos"))
 
 # -------------------------------------------------------------------------
 # Data manipulation -------------------------------------------------------
@@ -67,10 +92,12 @@ visdat::vis_dat(db)
 skimr::skim(db)
 
 # -------------------------------------------------------------------------
-# Linear regression analisys
+# Linear regression analysis
+
+summary(db)
 
 # -------------------------------------------------------------------------
-## Modelo 1 
+## Modelo 1 # linear
 
 mdl <- lm(nespecies ~ leitos, data = db) 
 mdl
@@ -147,8 +174,8 @@ ggplot(
     ,label.x = 0.10
     ,label.y = 0.95) + 
   
-  labs(y = "Altura de planta (m)"
-       ,x = "Diâmetro do caule (cm)") +
+  labs(y = "Nº Leitos"
+       ,x = "Nº Espécies") +
   
   theme_bw()
 
@@ -220,29 +247,79 @@ DHARMa::simulateResiduals(fittedModel = mdlbn, plot = TRUE)
 # Get R²
 performance::r2(mdlbn)
 
+performance::check_overdispersion(mdlp)
+performance::r2(mdlp)
+performance::r2(mdlbn)
+
+performance::r2(mdl)
+
 # -------------------------------------------------------------------------
 # -------------------------------------------------------------------------
 # -------------------------------------------------------------------------
 
-# Tarefas: o que falta agora é fazermos os gráficos
-# verificar se vale a pena retirar os outilers
-# Verificar a melhor representação gráfica da famíla Poisson.
+# Sequência de valores para predição
+newdata <- data.frame(leitos = seq(min(db$leitos), max(db$leitos), length.out = 100))
 
+# Predições Poisson
+pred_pois <- predict(mdlp, newdata, type = "link", se.fit = TRUE)
+newdata$pred_pois <- exp(pred_pois$fit)
+newdata$lower_pois <- exp(pred_pois$fit - 1.96 * pred_pois$se.fit)
+newdata$upper_pois <- exp(pred_pois$fit + 1.96 * pred_pois$se.fit)
 
+# Predições Binomial Negativa
+pred_nb <- predict(mdlbn, newdata, type = "link", se.fit = TRUE)
+newdata$pred_nb <- exp(pred_nb$fit)
+newdata$lower_nb <- exp(pred_nb$fit - 1.96 * pred_nb$se.fit)
+newdata$upper_nb <- exp(pred_nb$fit + 1.96 * pred_nb$se.fit)
 
+# -------------------------------------------------------------------------
+# Gráfico
+ggplot(db, aes(x = leitos, y = nespecies)) +
+  
+  geom_point(alpha = 0.6) +
+  
+  geom_line(data = newdata
+            , aes(x = leitos
+                  , y = pred_pois
+                  , color = "Poisson")
+            , size = 1, inherit.aes = FALSE) +
+  
+  geom_ribbon(data = newdata
+              , aes(x = leitos
+                    , ymin = lower_pois
+                    , ymax = upper_pois
+                    , fill = "Poisson")
+              , alpha = 0.15, inherit.aes = FALSE) +
+  
+  geom_line(data = newdata
+            , aes(x = leitos
+                  , y = pred_nb
+                  , color = "Neg. Binomial")
+            , size = 1.1
+            , linetype = "dashed"
+            , inherit.aes = FALSE) +
+  
+  geom_ribbon(data = newdata
+              , aes(x = leitos
+                    , ymin = lower_nb
+                    , ymax = upper_nb
+                    , fill = "Neg. Binomial")
+              , alpha = 0.15
+              , inherit.aes = FALSE) +
+  
+  scale_color_manual(values = c("Poisson" = "red"
+                                , "Neg. Binomial" = "blue")) +
+  
+  scale_fill_manual(values = c("Poisson" = "red"
+                               , "Neg. Binomial" = "blue")) +
+  
+  labs(x = "Número de leitos"
+       ,y = "Número de espécies de orquídeas"
+       ,color = "Modelo", fill = "Modelo"
+       ,title = "Modelos GLM: Poisson vs Binomial Negativa") +
+  
+  theme_minimal(base_size = 13)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+# -------------------------------------------------------------------------
+# -------------------------------------------------------------------------
+# -------------------------------------------------------------------------

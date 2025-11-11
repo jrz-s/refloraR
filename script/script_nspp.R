@@ -9,7 +9,7 @@
 # Description
 # Nesse script estou criando uma grid com o shapefile da Caatinga;
 # Adicionando os pontos de ocorrência das espécies;
-# Analisando a riqueza em cada grid.
+# Analisando a riqueza em cada célula.
 
 # -------------------------------------------------------------------------
 # Pacotes necessários
@@ -21,15 +21,10 @@ library(sf)
 library(dplyr)
 library(readxl)
 library(ggplot2)
-library(tidyverse)
-library(viridis)
-library(terra)
 
 # Ler shapefile da Caatinga
 caatinga <- st_read("shp/caatinga.shp")
-#caatinga <- st_read("shp/Municipios-Caatinga/Caatinga-Municipios.shp")
 caatinga <- st_transform(caatinga, crs = 4674)  # garantir CRS em graus
-plot(caatinga)
 
 # Criar grid de 0,5 grau
 grid <- st_make_grid(caatinga,
@@ -38,8 +33,6 @@ grid <- st_make_grid(caatinga,
   st_as_sf() %>%
   mutate(cell_id = row_number())   # criar ID único para cada célula
 
-plot(grid)
-
 # Calcular interseção sem cortar a célula
 # área total da célula
 grid <- grid %>% mutate(area_total = as.numeric(st_area(.)))
@@ -47,10 +40,8 @@ grid <- grid %>% mutate(area_total = as.numeric(st_area(.)))
 # calcular a área de interseção com a Caatinga
 intersec <- sf::st_intersection(grid, caatinga) %>%
   dplyr::mutate(area_intersec = as.numeric(st_area(.))) %>%
-  st_drop_geometry() %>%
- dplyr::select(cell_id, area_intersec)
-
-plot(intersec)
+  sf::st_drop_geometry() %>%
+  dplyr::select(cell_id, area_intersec)
 
 # juntar com a grid original
 grid <- left_join(grid, intersec, by = "cell_id") %>%
@@ -67,7 +58,6 @@ ggplot()+
 # Ler pontos de ocorrência (Excel)
 # A planilha precisa ter colunas "longitude" e "latitude"
 # ocorrencias <- read_excel("database/db_caat_habitat_dummy.xlsx")
-
 ocorrencias <- readxl::read_excel(path = here::here("database"
                                                     ,"orquidea"
                                                     ,"tidy_data"
@@ -98,80 +88,41 @@ grid_filtrada <- grid_filtrada %>%
 
 # Visualizar resultado (mapa com riqueza de espécies)
 map_especies <- ggplot() +
-  geom_sf(data = grid_filtrada
-          #, aes(fill = n_especies)
-          , color = "gray80") +
-  #scale_fill_viridis_c(option = "brightgreen2", na.value = "white") + 
+  geom_sf(data = grid_filtrada, aes(fill = n_ocorrencias), color = "gray80") +
   scale_fill_viridis_c(option = "viridis", na.value = "white") +
   geom_sf(data = caatinga, fill = NA, color = "black") +
   #geom_sf(data = ocorrencias_sf, color = "red", size = 1) +
   theme_minimal() +
-  labs(fill = "Nº de espécies")
+  labs(fill = "Nº de ocorrencias")
 
-# Jutando FRic e plotando
-FD.index <- read.csv(file = here::here("database"
-                                       ,"orquidea"
-                                       ,"tidy_data"
-                                       ,"FD.incices.csv"))
-#FD.index <- read.csv("FD.incices.csv")
+# -------------------------------------------------------------------------
 
-library(dplyr)
+# transformar um grid (shapefile) em um raster
 
-grid_FRic <- grid_filtrada %>%
-  left_join(FD.index, by = c("cell_id" = "Cell"))
+# 1. Ler o shapefile (pode ser .shp, .gpkg, etc.)
+grid <- grid_filtrada
 
-map_FRic <- ggplot() +
-  geom_sf(data = grid_FRic, aes(fill = FRic), color = "gray80") +
-  scale_fill_viridis_c(option = "C", na.value = "white") +
-  geom_sf(data = caatinga, fill = NA, color = "black", size = 0.6) +
-  theme_minimal() +
-  labs(fill = "FRic") +
-  theme(
-    plot.title = element_text(hjust = 0.5, face = "bold"),
-    legend.position = "right"
-  )
+# 2. Criar um raster base (define resolução e extensão)
+# Exemplo: resolução de 0.01 graus
+r_base <- terra::rast(grid, resolution = 0.5)
 
-library(grid)
-library(gridExtra)
+# 3. Converter (rasterizar) com base em um atributo do shapefile
+# Suponha que o shapefile tenha uma coluna chamada "valor"
+r_ocorrencias <- rasterize(grid, r_base, field = "n_ocorrencias")
 
-grid.arrange(map_especies, map_FRic, ncol = 2)
+# 4. Salvar o resultado
+# writeRaster(r_grid, "caminho/para/saida_grid_raster.tif", overwrite = TRUE)
 
-# Criar matriz de presença/ausência ---------------------------------------
+plot(r_ocorrencias)
 
-# Organizando a coordenada da grid filtrada
-grid_coords <- grid_filtrada %>%
-  st_centroid() %>%
-  st_coordinates() %>%
-  as.data.frame() %>%
-  rename(x = X, y = Y) %>%
-  mutate(cell_id = grid_filtrada$cell_id)
+# export raster
+terra::writeRaster(
+  r_ocorrencias
+  ,filename = here::here(
+    "rasters"
+    ,"raster_ocorrencias.tiff")
+  ,overwrite = TRUE)
 
-# Selecionando as colunas necessárias e removendo duplicatas 
-presenca <- ocorrencias_com_grid %>%
-  st_drop_geometry() %>% 
-  select(cell_id, sci_name) %>%
-  distinct()
-
-# Criando uma matriz de presença e ausência
-matriz_pa <- presenca %>%
-  mutate(presenca = 1) %>%
-  tidyr::pivot_wider(
-    names_from = sci_name,
-    values_from = presenca,
-    values_fill = list(presenca = 0)
-  ) %>% arrange(cell_id) #ordenando por id da célula
-
-# Juntar coordenadas à matriz de presença/ausência
-matriz_pa <- matriz_pa %>%
-  left_join(grid_coords, by = "cell_id") %>%
-  relocate(x, y, .after = cell_id)  # coloca as coordenadas logo após o ID
-
-# Visualizar as primeiras linhas
-head(matriz_pa)
-
-install.packages("writexl")
-library(writexl)
-write_xlsx(matriz_pa, "database/matriz_presenca_ausencia.xlsx")
-
-
-plot(ocorrencias_por_celula$n_ocorrencias, ocorrencias_por_celula$n_especies)
+# -------------------------------------------------------------------------
+# -------------------------------------------------------------------------
+# -------------------------------------------------------------------------
