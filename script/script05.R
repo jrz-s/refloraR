@@ -80,7 +80,10 @@ utils::browseURL(link) #
 
 # base de dados principal
 pdb <- readRDS(file = here::here("database","393.417","CompleteBrazilianFlora.rds"))
+head(pdb)
 
+pp <- read.csv("C:/Users/Vívian Costa/Desktop/refloraR/database/orquidea/tidy_data/db_vi_sp.csv", sep = ",")
+head(pp)
 # -------------------------------------------------------------------------
 # 1. Filtrar a base de dados principal
 
