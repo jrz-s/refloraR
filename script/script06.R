@@ -8,7 +8,9 @@
 # -------------------------------------------------------------------------
 # Description
 #' Processamento de bases de dados das orquídeas da Vivian para banco de 
-#' sinonimos
+#' sinonimos. 
+#' Este script não ficar em observação, por que? Porque ao unir os sinônimos com
+#' da base de dados principal retirou especies da nossa base de dados de webscraping.
 
 # -------------------------------------------------------------------------
 # Load packages
@@ -29,8 +31,18 @@ db <- load(file = here::here("database"
                             ,"orquidea_data.rda")) %>% get()
 rm('orquidea_list')
 
+load(file = here::here("database"
+                       ,"orquidea"
+                       ,"tidy_data"
+                       ,"db_caat_principal.rda"))
+
+
+
 # -------------------------------------------------------------------------
 # Database manipulation
+
+## transformar de lista para dataframe
+## obs. deveria ser 410 e está com 412
 
 db <- tibble::enframe(
   x = db
@@ -52,6 +64,8 @@ pdb <- readRDS(file = here::here("database"
 # -------------------------------------------------------------------------
 # Selecionar as variaveis do Webscraping
 
+## substituir o nome da coluna 'species' para 'specificEpithet'
+
 db <- db %>% 
   dplyr::select(sc_name
                 ,genus
@@ -63,20 +77,22 @@ db <- db %>%
                 ,public_comm
                 ,citation)
 
+## carregando os sinonimos
+
 db_synm <- florabr::get_synonym(data = pdb
                      ,species = db$sc_name) %>% 
   dplyr::select("sc_name" =  acceptedName
                 ,synonym) %>% tibble::as_tibble()
 
-## unir os sinomicos da base geral para a nossa base webscraping
+## unir os sinomimos da base geral para a nossa base webscraping
 
 db_webscrp_id <- db %>% 
   dplyr::inner_join(db_caat_principal %>% 
                       dplyr::mutate(sc_name = paste0(genus
                                                      ," "
                                                      ,specificEpithet)) %>%
-                      dplyr::select(id,sc_name) %>% tibble::as_tibble()
-                    ,by = "sc_name") %>% 
+                      dplyr::select(id, sc_name) %>% tibble::as_tibble()
+                    , by = "sc_name",relationship = "many-to-many") %>% 
   dplyr::select(id, everything()) %>% 
   dplyr::inner_join(db_synm,by = "sc_name",relationship = "many-to-many") %>% 
   dplyr::select(id,genus
@@ -86,6 +102,8 @@ db_webscrp_id <- db %>%
                 , everything())
 
 # -------------------------------------------------------------------------
+# -------------------------------------------------------------------------
+
 load(file = here::here("database"
                        ,"orquidea"
                        ,"tidy_data"
@@ -118,42 +136,6 @@ db$free_descrp_pt
 db$free_descrp_en
 db$public_comm
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# -------------------------------------------------------------------------
+# -------------------------------------------------------------------------# -------------------------------------------------------------------------
 # -------------------------------------------------------------------------
 # -------------------------------------------------------------------------

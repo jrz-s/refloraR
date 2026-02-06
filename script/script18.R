@@ -58,7 +58,7 @@ plot(hospedagem)
 # -------------------------------------------------------------------------
 # Rasterizamos
 
-# Leito
+# LEITO
 
 # raster base, definimos a resolução
 r_base <- terra::rast(leitos, resolution = 0.5)
@@ -79,9 +79,10 @@ terra::writeRaster(
     ,"raster_leitos_exemplo.tiff")
   ,overwrite = TRUE)
 
-# hospedagem
+### HOSPEDAGEM
+
 # raster base, definimos a resolução
-r_base2 <- terra::rast(hospedagem, resolution = 0.5)
+r_base <- terra::rast(hospedagem, resolution = 0.5)
 
 plot(r_base2)
 
@@ -99,12 +100,27 @@ terra::writeRaster(
     ,"raster_hospedagem_exemplo.tiff")
   ,overwrite = TRUE)
 
-# registros
+# REGISTROS (OCORRENCIAS)
 
+# carregamos o shapefile do registros
+registros <- grid_filtrada # linha 101 do script13_grid.R (shapefile)
 
+# raster base 
+r_base <- terra::rast(registros, resolution = 0.5)
 
+# raster do registro
+r_registros <- terra::rasterize(registros, r_base, field = "n_ocorrencias")
+
+# exportamos o raster
+terra::writeRaster(
+  r_registros
+  ,filename = here::here(
+    "rasters"
+    ,"raster_registro.tiff")
+  ,overwrite = TRUE)
+
+plot(r_registros)
 
 # -------------------------------------------------------------------------
 # -------------------------------------------------------------------------
 # -------------------------------------------------------------------------
-

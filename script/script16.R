@@ -20,56 +20,61 @@ pacman::p_load(here,tidyverse,MASS,ggtext,terra)
 # Load database -----------------------------------------------------------
 
 r_especies <- terra::rast(x = here::here("rasters","raster_nespecies.tiff"))
-r_ocorrencias <- terra::rast(x = here::here("rasters","raster_ocorrencias.tiff"))
+r_registros <- terra::rast(x = here::here("rasters","raster_ocorrencias.tiff"))
 r_hospedagem <- terra::rast(x = here::here("rasters","raster_hospedagem.tiff"))
 r_leitos <- terra::rast(x = here::here("rasters","raster_leitos.tiff"))
 
 plot(r_especies)
+plot(r_registros)
 plot(r_hospedagem)
 plot(r_leitos)
 
 # -------------------------------------------------------------------------
 ## padronizar a extensao para melhor representacao
 r1 <- terra::rast(x = here::here("rasters","raster_nespecies.tiff"))
-r2 <- terra::rast(x = here::here("rasters","raster_hospedagem.tiff"))
-r3 <- terra::rast(x = here::here("rasters","raster_leitos.tiff"))
+r2 <- terra::rast(x = here::here("rasters","raster_ocorrencias.tiff"))
+r3 <- terra::rast(x = here::here("rasters","raster_hospedagem.tiff"))
+r4 <- terra::rast(x = here::here("rasters","raster_leitos.tiff"))
 
 ref <- r1  # referência
-r2_res <- terra::resample(r2, ref, method = "bilinear")  # ou "near" se for dados categóricos
-r3_res <- terra::resample(r3, ref, method = "bilinear")  # provavelmente já alinhado, mas garante
+r3_res <- terra::resample(r3, ref, method = "bilinear")  # ou "near" se for dados categóricos
+r4_res <- terra::resample(r4, ref, method = "bilinear")  # provavelmente já alinhado, mas garante
 
-r2_res <- terra::crop(r2_res, ext(ref))
 r3_res <- terra::crop(r3_res, ext(ref))
+r4_res <- terra::crop(r4_res, ext(ref))
 
-stacked <- c(r1, r2_res, r3_res)
-names(stacked) <- c("n_especies", "hospedagem", "leitos")
+stacked <- c(r1, r2, r3_res, r4_res)
+names(stacked) <- c("n_especies", "n_registros", "hospedagem", "leitos")
 
 # plotar juntos
 plot(
   stacked
-  ,nc = 3          
-  ,nr = 1          
+  ,nc = 2          
+  ,nr = 2          
   ,mar = c(3, 3, 2, 5)
-  ,main = c("Número de espécies", "Hospedagem", "Leitos"))
+  ,main = c("N° de espécies", "N° de registros", "Hospedagem", "Leitos"))
 
 # -------------------------------------------------------------------------
 # Data manipulation -------------------------------------------------------
 
 df_especies <- as.data.frame(r_especies, xy = TRUE) 
+df_registros <- as.data.frame(r_registros, xy = TRUE) 
 df_hospedagem <- as.data.frame(r_hospedagem, xy = TRUE)
 df_leitos <- as.data.frame(r_leitos, xy = TRUE)
 
 # Inner join
 db <- df_especies %>% 
+  dplyr::inner_join(df_registros) %>% 
   dplyr::inner_join(df_hospedagem) %>% 
   dplyr::inner_join(df_leitos) 
 
 # rename variables
-colnames(db) <- c('x','y','nespecies','hospedagem','leitos')
+colnames(db) <- c('x','y','nespecies','nregistros','hospedagem','leitos')
 
 # Remove 0
 db <- db %>% 
   dplyr::filter(nespecies>0
+                ,nregistros>0
                 ,hospedagem>0
                 ,leitos>0)
 
@@ -80,7 +85,7 @@ db <- db %>%
 #                                        ,"tidy_data"
 #                                        ,"caatinga_orquidea_turismo.xlsx"))
 
-### EAD
+### EAD (Análises exploratória de dados)
 
 # Estrutura dos dados
 dplyr::glimpse(db)
@@ -88,7 +93,7 @@ dplyr::glimpse(db)
 # Estrutura visual dos dados
 visdat::vis_dat(db)
 
-# Resumo descritivo
+# Resumo descritivo (rápido)
 skimr::skim(db)
 
 # -------------------------------------------------------------------------
@@ -99,15 +104,20 @@ summary(db)
 # -------------------------------------------------------------------------
 ## Modelo 1 # linear
 
-mdl <- lm(nespecies ~ leitos, data = db) 
+# run model
+
+mdl <- lm(nregistros ~ leitos, data = db) 
 mdl
 
 # get residuals
 res <- stats::residuals(mdl)
+res
 
 # Normalidade
+# Kolmovorov (N>30)
 stats::ks.test(x = res, y = "pnorm", mean = mean(res), sd = sd(res)) 
 stats::ks.test(x = res, y = "pnorm", mean = 0, sd = 1) 
+# shapiro (N<=30)
 stats::shapiro.test(res) 
 
 # Homocedasticidade
@@ -155,7 +165,7 @@ print(reg.coef)
 ggplot(
   data = db
   ,mapping = aes(x = leitos
-                 ,y = nespecies)) +
+                 ,y = nregistros)) +
   
   geom_point() +
   
@@ -175,14 +185,14 @@ ggplot(
     ,label.y = 0.95) + 
   
   labs(y = "Nº Leitos"
-       ,x = "Nº Espécies") +
+       ,x = "Nº Registros") +
   
   theme_bw()
 
 # -------------------------------------------------------------------------
 ## Modelo 2 (GLM Poisson) 
 
-mdlp <- glm(nespecies ~ leitos,data = db,family = 'poisson')
+mdlp <- glm(nregistros ~ leitos,data = db,family = 'poisson')
 
 # get residuals
 res <- stats::residuals(mdlp)
@@ -216,7 +226,7 @@ performance::r2(mdlp)
 # -------------------------------------------------------------------------
 ## Modelo 3 (GLM Binomial negativa) 
 
-mdlbn <- MASS::glm.nb(nespecies ~ leitos,data = db,link = log)
+mdlbn <- MASS::glm.nb(nregistros ~ leitos,data = db,link = log)
 
 # get residuals
 res <- stats::residuals(mdlbn)
@@ -247,11 +257,8 @@ DHARMa::simulateResiduals(fittedModel = mdlbn, plot = TRUE)
 # Get R²
 performance::r2(mdlbn)
 
-performance::check_overdispersion(mdlp)
-performance::r2(mdlp)
+performance::check_overdispersion(mdlbn)
 performance::r2(mdlbn)
-
-performance::r2(mdl)
 
 # -------------------------------------------------------------------------
 # -------------------------------------------------------------------------
@@ -261,7 +268,7 @@ performance::r2(mdl)
 newdata <- data.frame(leitos = seq(min(db$leitos), max(db$leitos), length.out = 100))
 
 # Predições Poisson
-pred_pois <- predict(mdlp, newdata, type = "link", se.fit = TRUE)
+pred_pois <- predict(mdlbn, newdata, type = "link", se.fit = TRUE)
 newdata$pred_pois <- exp(pred_pois$fit)
 newdata$lower_pois <- exp(pred_pois$fit - 1.96 * pred_pois$se.fit)
 newdata$upper_pois <- exp(pred_pois$fit + 1.96 * pred_pois$se.fit)
@@ -274,7 +281,7 @@ newdata$upper_nb <- exp(pred_nb$fit + 1.96 * pred_nb$se.fit)
 
 # -------------------------------------------------------------------------
 # Gráfico
-ggplot(db, aes(x = leitos, y = nespecies)) +
+ggplot(db, aes(x = leitos, y = nregistros)) +
   
   geom_point(alpha = 0.6) +
   
@@ -314,7 +321,7 @@ ggplot(db, aes(x = leitos, y = nespecies)) +
                                , "Neg. Binomial" = "blue")) +
   
   labs(x = "Número de leitos"
-       ,y = "Número de espécies de orquídeas"
+       ,y = "Número de registros de orquídeas"
        ,color = "Modelo", fill = "Modelo"
        ,title = "Modelos GLM: Poisson vs Binomial Negativa") +
   

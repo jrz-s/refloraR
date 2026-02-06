@@ -10,6 +10,7 @@
 #' 1. Filtrar a base de dados principal com a base de Vivian
 #' 2. Preparar o script para obter por webscraping as informações 
 #' da descrição controlada, livre e comentário públicos das espécies.
+#' A base de dados 'orquidea_data.rda' é resultado do processo de webscraping.
 
 # -------------------------------------------------------------------------
 # Load packages
@@ -30,9 +31,11 @@ source(file = here::here("function","get_refloraR_info.R"))
 
 # Input definition
 
-genero <- "Coppensia"
-especie <- "flexuosum"
+genero <- "Lippia"
+especie <- "grata"
 grupo <- "6"
+
+identificar_link(genero = genero, especies = especie)
 
 # -------------------------------------------------------------------------
 # Protocol
@@ -82,19 +85,10 @@ utils::browseURL(link) #
 pdb <- readRDS(file = here::here("database","393.417","CompleteBrazilianFlora.rds"))
 head(pdb)
 
-pp <- read.csv("C:/Users/Vívian Costa/Desktop/refloraR/database/orquidea/tidy_data/db_vi_sp.csv", sep = ",")
-head(pp)
 # -------------------------------------------------------------------------
 # 1. Filtrar a base de dados principal
 
-# filtrou a base de dados principal com os dados de vivi
-db_caat_principal <- pdb %>% dplyr::filter(species %in% pp$sci_name)
-
-db_caat_principal$species %>% unique %>% length()
-
-db_caat$sci_name %>% unique %>% length()
-
-# base de dados vivi
+# 1.1 Carregar a base de dados da Vivi
 
 db_caat <- readr::read_csv(file = here::here("database"
                                              ,"orquidea"
@@ -135,14 +129,23 @@ db_caat <- readr::read_csv(file = here::here("database"
                                 ,'Stelis montserratii'
                                 ,'Stelis sclerophylla'))
 
+# 1.2 Quantificamos o número de espécies únicas ocorrentes na Caatinga
 
 pp <- db_caat %>% dplyr::select(sci_name) %>% 
   dplyr::group_by(sci_name) %>% 
   dplyr::count() %>% 
   dplyr::ungroup(sci_name)
 
+# 1.3 Filtramos as espécies únicas na base de dados de reflora com as espécies únicas.
 
+db_caat_principal <- pdb %>% # base de dados de reflora
+  dplyr::filter(species %in% pp$sci_name) # processo de filtrar
+
+# -------------------------------------------------------------------------
 ## código provisional para verificar se os nomes estão batendo
+
+# db_caat_principal$species %>% unique %>% length() # verificar se o filtro funcionou
+# db_caat$sci_name %>% unique %>% length()
 
 # q1 <- db_caat_principal %>% 
 #   dplyr::select("sci_name" = species) %>% 
@@ -172,6 +175,9 @@ save(db_caat_principal,file = here::here("database"
                                          ,"orquidea"
                                          ,"tidy_data"
                                          ,"db_caat_principal.rda"))
+
+# -------------------------------------------------------------------------
+# -------------------------------------------------------------------------
 
 # -------------------------------------------------------------------------
 # 2. Preparar o script para obter os dados via webscraping

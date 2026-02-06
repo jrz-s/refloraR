@@ -1,7 +1,7 @@
 ##################################################################
 #' Zárate-Salazar, J. Rafael 
 #' Agronomy | Biodiversity - MS | Soil Science - PhD
-#' ECOSYS - UFS
+#' PPEC - UFS
 #' rzaratesalazar@gmail.com
 ##################################################################
 
@@ -9,17 +9,52 @@
 # Description -------------------------------------------------------------
 #> Neste script vamos tentar realizar outros modelos para ver o comportamento real da relação entre o número de espécies e leitos
 
-library(mgcv)
+# -------------------------------------------------------------------------
+# Load packages -----------------------------------------------------------
+pacman::p_load(here,tidyverse,MASS,ggtext,terra)
 
-# Modelo aditivo generalizado (GAM)
-mdl_gam <- gam(nespecies ~ s(leitos, k = 5), family = nb(), data = db)
-summary(mdl_gam)
-plot(mdl_gam, shade = TRUE, rug = TRUE)
-par(mfrow = c(1, 1))
-plot(mdl_gam)
+# -------------------------------------------------------------------------
+# Load database -----------------------------------------------------------
+
+r_especies <- terra::rast(x = here::here("rasters","raster_nespecies.tiff"))
+r_registros <- terra::rast(x = here::here("rasters","raster_ocorrencias.tiff"))
+r_hospedagem <- terra::rast(x = here::here("rasters","raster_hospedagem.tiff"))
+r_leitos <- terra::rast(x = here::here("rasters","raster_leitos.tiff"))
+
+plot(r_especies)
+plot(r_registros)
+plot(r_hospedagem)
+plot(r_leitos)
+
+# -------------------------------------------------------------------------
+# Data manipulation -------------------------------------------------------
+
+df_especies <- as.data.frame(r_especies, xy = TRUE) 
+df_registros <- as.data.frame(r_registros, xy = TRUE) 
+df_hospedagem <- as.data.frame(r_hospedagem, xy = TRUE)
+df_leitos <- as.data.frame(r_leitos, xy = TRUE)
+
+# Inner join
+db <- df_especies %>% 
+  dplyr::inner_join(df_registros) %>% 
+  dplyr::inner_join(df_hospedagem) %>% 
+  dplyr::inner_join(df_leitos) 
+
+# rename variables
+colnames(db) <- c('x','y','nespecies','nregistros','hospedagem','leitos')
+
+# Remove 0
+db <- db %>% 
+  dplyr::filter(nespecies>0
+                ,nregistros>0
+                ,hospedagem>0
+                ,leitos>0)
+
+# -------------------------------------------------------------------------
+# Modelagem ---------------------------------------------------------------
 
 # Modelo log–linear (GLM com log de X)
-mdl_log <- MASS::glm.nb(nespecies ~ log(leitos + 1), data = db)
+mdl_log <- MASS::glm.nb(nregistros ~ log(leitos + 1), data = db)
 summary(mdl_log)
 performance::r2(mdl_log)
 par(mfrow = c(2, 2))
@@ -28,7 +63,7 @@ par(mfrow = c(1,1))
 DHARMa::simulateResiduals(fittedModel = mdl_log, plot = TRUE)
 
 # Modelo exponencial simples (Y = a * b^X)
-mdl_exp <- lm(log(nespecies) ~ leitos, data = db)
+mdl_exp <- lm(log(nregistros) ~ leitos, data = db)
 summary(mdl_exp)
 performance::r2(mdl_exp)
 par(mfrow = c(2, 2))
@@ -37,7 +72,7 @@ par(mfrow = c(1,1))
 DHARMa::simulateResiduals(fittedModel = mdl_exp, plot = TRUE)
 
 # Modelo potencial (Y = a * X^b)
-mdl_pow <- lm(log(nespecies) ~ log(leitos + 1), data = db)
+mdl_pow <- lm(log(nregistros) ~ log(leitos + 1), data = db)
 summary(mdl_pow)
 performance::r2(mdl_pow)
 par(mfrow = c(2, 2))
@@ -52,7 +87,7 @@ performance::compare_performance(mdlbn, mdl_log, mdl_pow)
 # Gráfico log-log (forma linearizada)
 
 ggplot(db, aes(x = log(leitos + 1)
-               , y = log(nespecies))) +
+               , y = log(nregistros))) +
   
   geom_point(size = 2) +
   
@@ -61,7 +96,7 @@ ggplot(db, aes(x = log(leitos + 1)
               , color = "blue") +
   
   labs(x = "log(Leitos + 1)"
-       , y = "log(Número de espécies)"
+       , y = "log(Número de registros)"
        , title = "Relação potencial entre leitos e número de espécies") +
   
   theme_minimal()
@@ -77,7 +112,7 @@ newdata <- data.frame(leitos = seq(min(db$leitos)
 newdata$pred <- exp(0.9896) * (newdata$leitos + 1)^0.1942
 
 ggplot(db, aes(x = leitos
-               , y = nespecies)) +
+               , y = nregistros)) +
   
   geom_point(size = 2) +
   
@@ -87,7 +122,7 @@ ggplot(db, aes(x = leitos
             , color = "blue"
             , linewidth = 1.2) +
   
-  labs(x = "Número de leitos", y = "Número de espécies",
+  labs(x = "Número de leitos", y = "Número de registros",
        title = "Ajuste do modelo potencial: Y = 2.69 * (X)^0.194") +
   
   theme_minimal()

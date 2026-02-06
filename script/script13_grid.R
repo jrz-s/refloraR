@@ -26,19 +26,20 @@ library(ggplot2)
 library(tidyverse)
 library(viridis)
 library(terra)
+library(here)
 
 # Ler shapefile da Caatinga
-caatinga <- st_read("shp/caatinga.shp")
+caatinga <- sf::st_read(here::here('shp','caatinga.shp'))
 #caatinga <- st_read("shp/Municipios-Caatinga/Caatinga-Municipios.shp")
-caatinga <- st_transform(caatinga, crs = 4674)  # garantir CRS em graus
+caatinga <- sf::st_transform(caatinga, crs = 4674)  # garantir CRS em graus
 plot(caatinga)
 
 # Criar grid de 0,5 grau
-grid <- st_make_grid(caatinga,
-                     cellsize = c(0.5, 0.5),
-                     square = TRUE) %>%
-  st_as_sf() %>%
-  mutate(cell_id = row_number())   # criar ID único para cada célula
+grid <- sf::st_make_grid(caatinga
+                     ,cellsize = c(0.5, 0.5)
+                     ,square = TRUE) %>%
+  sf::st_as_sf() %>%
+  dplyr::mutate(cell_id = row_number())   # criar ID único para cada célula
 
 plot(grid)
 
@@ -49,15 +50,17 @@ grid <- grid %>% mutate(area_total = as.numeric(st_area(.)))
 # calcular a área de interseção com a Caatinga
 intersec <- sf::st_intersection(grid, caatinga) %>%
   dplyr::mutate(area_intersec = as.numeric(st_area(.))) %>%
-  st_drop_geometry() %>%
- dplyr::select(cell_id, area_intersec)
+  sf::st_drop_geometry() %>%
+  dplyr::select(cell_id, area_intersec)
 
 plot(intersec)
 
 # juntar com a grid original
 grid <- left_join(grid, intersec, by = "cell_id") %>%
-  mutate(area_intersec = ifelse(is.na(area_intersec), 0, area_intersec),
-         prop_area = area_intersec / area_total)
+  dplyr::mutate(area_intersec = ifelse(is.na(area_intersec)
+                                       , 0
+                                       , area_intersec)
+                ,prop_area = area_intersec / area_total)
 
 
 # Filtrar células com ≥ 50% da área dentro da Caatinga
@@ -76,44 +79,62 @@ ocorrencias <- readxl::read_excel(path = here::here("database"
                                                     ,"db_caat_habitat_dummy.xlsx"))
 
 # Transformar em objeto sf
-ocorrencias_sf <- st_as_sf(ocorrencias,
-                           coords = c("long", "lat"),
-                           crs = 4674)
+ocorrencias_sf <- sf::st_as_sf(ocorrencias
+                           ,coords = c("long", "lat")
+                           ,crs = 4674)
 
 # Associar pontos à grid (saber em qual célula cada ponto caiu)
-ocorrencias_com_grid <- st_join(ocorrencias_sf, grid_filtrada, join = st_intersects)
+ocorrencias_com_grid <- sf::st_join(ocorrencias_sf
+                                , grid_filtrada
+                                , join = st_intersects)
 
 # Riqueza e número de espécies distintas 
 # Resumir por célula
 ocorrencias_por_celula <- ocorrencias_com_grid %>%
-  st_drop_geometry() %>%
-  group_by(cell_id) %>%
-  summarise(
-    n_ocorrencias = n(),                   # total de registros
-    n_especies = n_distinct(sci_name)       # número de espécies distintas
-  )
+  sf::st_drop_geometry() %>%
+  dplyr::group_by(cell_id) %>%
+  dplyr::summarise(
+    n_ocorrencias = n()                       # total de registros
+    ,n_especies = n_distinct(sci_name))       # número de espécies distintas
 
 # Juntar resultados com a grid
 grid_filtrada <- grid_filtrada %>%
-  left_join(ocorrencias_por_celula, by = "cell_id")
+  dplyr::left_join(ocorrencias_por_celula, by = "cell_id") 
 
+plot(grid_filtrada)
 
 # Visualizar resultado (mapa com riqueza de espécies)
 map_especies <- ggplot() +
-<<<<<<< HEAD
   geom_sf(data = grid_filtrada, aes(fill = n_especies), color = "gray80") +
   scale_fill_viridis_c(option = "plasma", na.value = "white") +
-=======
   geom_sf(data = grid_filtrada
-          #, aes(fill = n_especies)
+          , aes(fill = n_especies)
           , color = "gray80") +
   #scale_fill_viridis_c(option = "brightgreen2", na.value = "white") + 
   scale_fill_viridis_c(option = "viridis", na.value = "white") +
->>>>>>> 66709db68ff313e75a62484acdb0889df296e16a
   geom_sf(data = caatinga, fill = NA, color = "black") +
   #geom_sf(data = ocorrencias_sf, color = "red", size = 1) +
   theme_minimal() +
   labs(fill = "Nº de espécies")
+
+# Visualizar resultado para número de ocorrências (registros)
+map_especies <- ggplot() +
+  
+  geom_sf(data = grid_filtrada, aes(fill = n_ocorrencias), color = "gray80") +
+  
+  scale_fill_viridis_c(option = "plasma", na.value = "white") +
+  
+  geom_sf(data = grid_filtrada
+          , aes(fill = n_ocorrencias)
+          , color = "gray80") +
+  
+  scale_fill_viridis_c(option = "viridis", na.value = "white") +
+  
+  geom_sf(data = caatinga, fill = NA, color = "black") +
+  
+  theme_minimal() +
+  
+  labs(fill = "Nº de registros")
 
 # Jutando FRic e plotando
 FD.index <- read.csv(file = here::here("database"
